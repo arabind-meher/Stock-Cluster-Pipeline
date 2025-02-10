@@ -1,1 +1,8 @@
 .venv/
+.idea/
+.vscode/
+__pycache__/
+data/
+input_data/
+output_data/
+utils/__pycache__
