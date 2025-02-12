@@ -20,6 +20,7 @@ class Stock:
     dividend: Optional[str] = None
     ex_dividend_date: Optional[str] = None
     volume: Optional[str] = None
+    average_volume: Optional[str] = None
     open: Optional[str] = None
     previous_close: Optional[str] = None
     days_range: Optional[str] = None

@@ -1,5 +1,7 @@
 import os
 import logging
+from datetime import datetime
+
 from tqdm import tqdm
 
 
@@ -9,8 +11,8 @@ class Logs:
     def __init__(self) -> None:
         """Initialize the Logs class and create a directory for log files if it doesn't exist."""
 
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        # Create `logs` directory in doesn't exist
+        os.makedirs("logs", exist_ok=True)
 
     def get_file_logger(self, name) -> logging.Logger:
         """Create and configure a file-based logger."""
@@ -20,7 +22,9 @@ class Logs:
         logger.setLevel(logging.INFO)
 
         # Configure file handler
-        handler = logging.FileHandler("logs/stock.log", mode="w")
+        handler = logging.FileHandler(
+            f"logs/stock_{datetime.now().strftime('%Y%m%d-%H%M%S')}.log", mode="w"
+        )
         handler.setLevel(logging.INFO)
         handler.setFormatter(
             logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")

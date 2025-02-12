@@ -2,7 +2,13 @@
 .idea/
 .vscode/
 __pycache__/
-data/
+
 input_data/
 output_data/
 utils/__pycache__
+
+logs/
+data/
+
+stock_data/
+stock_logs/

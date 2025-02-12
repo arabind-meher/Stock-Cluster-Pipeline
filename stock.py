@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 from models import Stock
+from logger import Logs
 from utils.strings import process_string
 from utils.exceptions import DriverNotInitializedError, PageLoadTimeoutError
 
@@ -20,8 +21,16 @@ class StockScraper:
     def __init__(self, directory: str = "data") -> None:
         self.driver = None
 
-        os.makedirs(directory, exist_ok=True)
+        # Setting log variable
+        logs = Logs()
+
+        self.file_logger = logs.get_file_logger("file_logger")
+
         self.directory = directory
+        self.historical_dir = os.path.join(self.directory, "historical_data")
+
+        os.makedirs(self.directory, exist_ok=True)
+        os.makedirs(self.historical_dir, exist_ok=True)
 
     def initialize_driver(self, headless: bool = False) -> None:
         options = webdriver.FirefoxOptions()
@@ -32,6 +41,8 @@ class StockScraper:
         self.driver = webdriver.Firefox(options=options)
         self.driver.maximize_window()
         self.driver.implicitly_wait(10)
+
+        self.file_logger.info("WebDriver initialized.")
 
     def redirect(self, url: str, wait: float = 1) -> None:
         if not self.driver:
@@ -45,6 +56,8 @@ class StockScraper:
         except TimeoutException:
             raise PageLoadTimeoutError(url)
 
+        self.file_logger.info(f"Loaded URL: {url}")
+
         sleep(wait)
 
     def scrape_urls(
@@ -52,14 +65,14 @@ class StockScraper:
     ) -> None:
         stocks_list = list()
 
-        for url, meta_data in tqdm(
-            zip_longest(urls, meta), desc="Stocks:", total=len(urls)
+        for iter, (url, meta_data) in enumerate(
+            tqdm(zip_longest(urls, meta), desc="Stocks", total=len(urls))
         ):
-            stocks_list.append(self.scrape_url(url, meta_data))
+            stocks_list.append(self.scrape_url(url, meta_data, iter))
 
-        DataFrame(stocks_list).to_csv(os.path.join(self.directory, file))
+        DataFrame(stocks_list).to_csv(os.path.join(self.directory, file), index=False)
 
-    def scrape_url(self, url: str, meta: dict, directory: str = "data") -> dict:
+    def scrape_url(self, url: str, meta: dict, iter: int = 0) -> dict:
         if not self.driver:
             raise DriverNotInitializedError
 
@@ -89,22 +102,22 @@ class StockScraper:
         # stock price
         stock.price = self.driver.find_element(By.CLASS_NAME, "text-4xl").text.strip()
 
-        # overview-info
-        info_elements = self.driver.find_element(
-            By.CSS_SELECTOR, "[data-test='overview-info']"
-        ).find_elements(By.TAG_NAME, "tr")
+        # overview info & quotes
+        overview_list = list()
 
-        for element in info_elements:
-            key, value = element.find_elements(By.TAG_NAME, "td")
-            if key and value:
-                stock[process_string(key.text)] = value.text.strip()
+        overview_list.extend(
+            self.driver.find_element(
+                By.CSS_SELECTOR, "[data-test='overview-info']"
+            ).find_elements(By.TAG_NAME, "tr")
+        )
 
-        # overview-quotes
-        quote_elements = self.driver.find_element(
-            By.CSS_SELECTOR, "[data-test='overview-quote']"
-        ).find_elements(By.TAG_NAME, "tr")
+        overview_list.extend(
+            self.driver.find_element(
+                By.CSS_SELECTOR, "[data-test='overview-quote']"
+            ).find_elements(By.TAG_NAME, "tr")
+        )
 
-        for element in quote_elements:
+        for element in overview_list:
             key, value = element.find_elements(By.TAG_NAME, "td")
             if key and value:
                 stock[process_string(key.text)] = value.text.strip()
@@ -141,16 +154,20 @@ class StockScraper:
 
         self.scrape_historical_data(url + "history", meta)
 
+        log_msg = f"{stock['symbol']:<{6}} - {stock['company_name']} [Found]"
+        self.file_logger.info(log_msg)
         return stock.to_dict()
 
     def scrape_historical_data(self, url: str, meta: dict):
         if not self.driver:
             raise DriverNotInitializedError
 
-        historical_data_directory = os.path.join(self.directory, "historical_data")
-        os.makedirs(historical_data_directory, exist_ok=True)
-
         self.redirect(url)
+
+        market_cap_historical_dir = os.path.join(
+            self.historical_dir, meta["market_cap_category"]
+        )
+        os.makedirs(market_cap_historical_dir, exist_ok=True)
 
         historical_data = list()
 
@@ -171,9 +188,12 @@ class StockScraper:
             historical_data.append(row_data)
 
         DataFrame(historical_data, columns=columns).to_csv(
-            os.path.join(historical_data_directory, str(meta.get("symbol")) + ".csv"),
+            os.path.join(market_cap_historical_dir, meta["symbol"] + ".csv"),
             index=False,
         )
+
+        log_msg = f"{meta['symbol']:<{6}} - {meta['company_name']} [History Saved]"
+        self.file_logger.info(log_msg)
 
     def close(self) -> None:
         if self.driver:
