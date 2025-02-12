@@ -171,7 +171,7 @@ class StockScraper:
             historical_data.append(row_data)
 
         DataFrame(historical_data, columns=columns).to_csv(
-            os.path.join(historical_data_directory, str(meta.get("symbol"))),
+            os.path.join(historical_data_directory, str(meta.get("symbol")) + ".csv"),
             index=False,
         )
 
