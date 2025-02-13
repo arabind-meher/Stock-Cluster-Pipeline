@@ -1,10 +1,9 @@
 import os
 import re
 from time import sleep
-from itertools import zip_longest
 
 from tqdm import tqdm
-from pandas import DataFrame, concat
+from pandas import DataFrame
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -66,9 +65,12 @@ class StockScraper:
         stocks_list = list()
 
         for iter, (url, meta_data) in enumerate(
-            tqdm(zip_longest(urls, meta), desc="Stocks", total=len(urls))
+            tqdm(zip(urls, meta), desc="Stocks", total=len(urls)), start=1
         ):
             stocks_list.append(self.scrape_url(url, meta_data, iter))
+
+            if iter % 10 == 0:
+                sleep(3)
 
         DataFrame(stocks_list).to_csv(os.path.join(self.directory, file), index=False)
 
@@ -152,13 +154,13 @@ class StockScraper:
             profile_elements[4].find_elements(By.TAG_NAME, "span")[-1].text.strip()
         )
 
-        self.scrape_historical_data(url + "history", meta)
+        self.scrape_historical_data(url + "history", meta, iter)
 
-        log_msg = f"{stock['symbol']:<{6}} - {stock['company_name']} [Found]"
+        log_msg = f"{str(iter):<{3}}: {stock['symbol']:<{6}} - {stock['company_name']} [Found]"
         self.file_logger.info(log_msg)
         return stock.to_dict()
 
-    def scrape_historical_data(self, url: str, meta: dict):
+    def scrape_historical_data(self, url: str, meta: dict, iter: int = 1):
         if not self.driver:
             raise DriverNotInitializedError
 
@@ -192,7 +194,7 @@ class StockScraper:
             index=False,
         )
 
-        log_msg = f"{meta['symbol']:<{6}} - {meta['company_name']} [History Saved]"
+        log_msg = f"{str(iter):<{3}}: {meta['symbol']:<{6}} - {meta['company_name']} [History Saved]"
         self.file_logger.info(log_msg)
 
     def close(self) -> None:

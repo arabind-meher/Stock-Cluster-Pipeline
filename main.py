@@ -8,7 +8,7 @@ from stock import StockScraper
 def get_stock_data_excel(path: str, sheet: str):
     modify_str = lambda x: x.strip().lower().replace(" ", "_")
 
-    stock_df = pd.read_excel(path, sheet_name=sheet).sample(10)
+    stock_df = pd.read_excel(path, sheet_name=sheet).sample(5)
     stock_df.columns = list(map(modify_str, stock_df.columns))
     stock_df["market_cap_category"] = sheet.strip()
 
@@ -20,7 +20,7 @@ def get_stock_data_excel(path: str, sheet: str):
 if __name__ == "__main__":
     file = "stock_urls.xlsx"
     path = os.path.join("source", file)
-    sheet_name = "Nano Cap"
+    sheet_name = "Mega Cap"
     urls, meta = get_stock_data_excel(path, sheet_name)
 
     directory = "data"
