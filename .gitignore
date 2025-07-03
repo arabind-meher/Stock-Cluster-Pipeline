@@ -8,7 +8,8 @@ output_data/
 utils/__pycache__
 
 logs/
-data/
+extra/
+raw_data/
 
 stock_data/
 stock_logs/
